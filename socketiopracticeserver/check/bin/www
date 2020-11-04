@@ -1,0 +1,229 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('check:server');
+var https = require('http');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '3001');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+
+var server = https.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
+
+
+// socket.io 스타트
+var io = require('socket.io')(server);
+var socketlist = [];
+var socketnamelist = [];
+var socketapplist = [];
+var socketseriallist = [];
+
+// 클라이언트 컨넥션 이벤트 처리
+io.on('connection', function (socket) {
+
+  var myname = "blankname";
+  var myserial = "blankserial";
+  var myapp = "blankapp";
+
+  socket.emit("requestyourname", {hello : "world"});
+
+  socket.on("myname", (data) => {
+    myname = data;
+    myserial = data.split(':')[0];
+    myapp = data.split(':')[1];
+    console.log(data + "client connected to server.");
+
+  if (socketseriallist.includes(myserial))
+  {
+    var firstsocketindex = socketseriallist.indexOf(myserial);
+    var firstsocket = socketlist[firstsocketindex];
+    var firstsocketapp = socketapplist[firstsocketindex];
+    
+    if (firstsocketapp === "Unity")
+    {
+      var Unitysocket = firstsocket;
+      var Fluttersocket = socket;
+
+      Fluttersocket.on("Rotationsender", (data) => {
+        Unitysocket.emit("Rotationgetter", data);
+      });
+  
+    }
+    else if(firstsocketapp === "Flutter")
+    {
+      var Fluttersocket = firstsocket;
+      var Unitysocket = socket;
+
+      Fluttersocket.on("Rotationsender", (data) => {
+        Unitysocket.emit("Rotationgetter", data);
+      });
+  
+    }
+
+    
+    socketlist.splice(firstsocketindex,1);
+    socketnamelist.splice(firstsocketindex,1);
+    socketapplist.splice(firstsocketindex,1);
+    socketseriallist.splice(firstsocketindex,1);
+
+    myname = "blankname";
+    myserial = "blankserial";
+    myapp = "blankapp";
+
+    console.log("socketidlist:");
+    console.log(socketlist.map((v) => {return v.id}));
+    console.log("Unity Flutter connected Successfully.");
+    console.log("socketnamelist:");
+    console.log(socketnamelist);
+    console.log("socketapplist:");
+    console.log(socketapplist);
+    console.log("socketseriallist:");
+    console.log(socketseriallist);
+  }
+  else
+  {
+    socketlist.push(socket);
+    socketnamelist.push(myname);
+    socketseriallist.push(myserial);
+    socketapplist.push(myapp);
+
+    myname = "blankname";
+    myserial = "blankserial";
+    myapp = "blankapp";
+
+    console.log("socketidlist:");
+    console.log(socketlist.map((v) => {return v.id}));
+    console.log("client socket added server Queue (waiting for connect to other device)");
+    console.log("socketnamelist:");
+    console.log(socketnamelist);
+    console.log("socketapplist:");
+    console.log(socketapplist);
+    console.log("socketseriallist:");
+    console.log(socketseriallist);
+  }
+
+  });
+
+  socket.on("disconnect", (data) => {
+    console.log("disconnected!");
+    var socketidlist = socketlist.map((v) => {return v.id});
+
+    if (socketidlist.includes(socket.id))
+    {
+      var disconnectedindex = socketidlist.findIndex((id) => {return id === socket.id});
+      console.log(disconnectedindex);
+      console.log("client disconnected :" + socketnamelist[disconnectedindex]);
+
+      socketlist.splice(disconnectedindex,1);
+      socketnamelist.splice(disconnectedindex,1);
+      socketapplist.splice(disconnectedindex,1);
+      socketseriallist.splice(disconnectedindex,1);
+
+      console.log("socketidlist:");
+      console.log(socketlist.map((v) => {return v.id}));
+      console.log("socketnamelist:");
+      console.log(socketnamelist);
+      console.log("socketapplist:");
+      console.log(socketapplist);
+      console.log("socketseriallist:");
+      console.log(socketseriallist); 
+    }
+    else
+    {
+      console.log("client name not sended. is client condition bad?" );
+      console.log("end connection. But I don't know what client disconnected.");
+      console.log("mysocketid:");
+      console.log(socket.id);
+      console.log("socketidlist:");
+      console.log(socketlist.map((v) => {return v.id}));
+      console.log("socketnamelist:");
+      console.log(socketnamelist);
+      console.log("socketapplist:");
+      console.log(socketapplist);
+      console.log("socketseriallist:");
+      console.log(socketseriallist);
+    }
+
+  })
+
+});
